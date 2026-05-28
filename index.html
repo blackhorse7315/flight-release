@@ -6,6 +6,8 @@
     <title>Ecrew Flight Release</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tambahkan html2pdf.js untuk fitur Print PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -686,6 +688,10 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> Delete
                 </button>
                 <div class="flex-grow hidden sm:block"></div>
+                <!-- Tombol Print PDF Baru -->
+                <button id="btnPrintPDF" class="px-6 py-2.5 rounded-xl font-medium text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg> Print PDF
+                </button>
                 <button id="btnDuplicate" class="px-6 py-2.5 rounded-xl font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg> Duplicate
                 </button>
@@ -719,6 +725,9 @@
             1: { count: 0, hasDest: false },
             2: { count: 0, hasDest: false }
         };
+
+        // Variable untuk menyimpan data release yang sedang dilihat di modal
+        let currentViewedRelease = null;
 
         // --- NEW: CREW DATABASE MANAGEMENT (Admin & Dropdowns) ---
         let crewDB = JSON.parse(localStorage.getItem('ecrew_db')) || { pic: [], sic: [], eng: [], cs: [] };
@@ -786,10 +795,11 @@
                 
                 // Update hidden input dan juga preview HTML-nya
                 signInput.value = picObj.signature || '';
-                if(picObj.signature && picObj.signature.includes('<img')) {
-                    signPreview.innerHTML = picObj.signature;
+                const sigStr = picObj.signature ? String(picObj.signature) : '';
+                if(sigStr && sigStr.includes('<img')) {
+                    signPreview.innerHTML = sigStr;
                 } else {
-                    signPreview.innerHTML = picObj.signature ? `<span class="font-mono text-xs font-bold">${picObj.signature}</span>` : '<span class="text-xs text-slate-400 italic">No signature</span>';
+                    signPreview.innerHTML = sigStr ? `<span class="font-mono text-xs font-bold">${sigStr}</span>` : '<span class="text-xs text-slate-400 italic">No signature</span>';
                 }
             } else {
                 document.getElementById('releasePicName').value = '';
@@ -1538,6 +1548,9 @@
             const data = globalReleases.find(r => r.timestamp === timestamp);
             if(!data) return;
 
+            // Simpan data ke variable global agar bisa diprint
+            currentViewedRelease = data;
+
             // Set Header Modal
             document.getElementById('dtlAcReg').textContent = data.acReg || 'A/C';
             document.getElementById('dtlAcType').textContent = data.acType || '-';
@@ -1564,15 +1577,16 @@
 
             // Set Format Khusus untuk Signature (Agar <img ... /> bisa merender gambar di Modal Detail)
             const sigEl = document.getElementById('dtl_releaseSign');
-            if(data.releaseSign && data.releaseSign.includes('<img')) {
+            const releaseSignStr = data.releaseSign ? String(data.releaseSign) : '';
+            if(releaseSignStr && releaseSignStr.includes('<img')) {
                 // Memastikan gambar yang masuk disesuaikan ukurannya agar rapi (h-full object-contain)
-                let imgHTML = data.releaseSign;
+                let imgHTML = releaseSignStr;
                 if(!imgHTML.includes('class=')) {
                      imgHTML = imgHTML.replace('<img', '<img class="h-full object-contain"');
                 }
                 sigEl.innerHTML = imgHTML; 
             } else {
-                sigEl.innerHTML = data.releaseSign ? `<span class="font-mono text-xs font-bold italic">${data.releaseSign}</span>` : '-';
+                sigEl.innerHTML = releaseSignStr ? `<span class="font-mono text-xs font-bold italic">${releaseSignStr}</span>` : '-';
             }
 
             // Set Fields Checklist dengan Badge Warna
@@ -1624,6 +1638,7 @@
             document.getElementById('btnDuplicate').onclick = () => duplicateRelease(data);
             document.getElementById('btnEdit').onclick = () => editRelease(data);
             document.getElementById('btnDelete').onclick = () => deleteRelease(data.timestamp);
+            document.getElementById('btnPrintPDF').onclick = () => generatePDF();
 
             detailModalOverlay.classList.remove('hidden');
             detailModalOverlay.classList.add('flex');
@@ -1697,7 +1712,7 @@
 
             // Set Ulang Signature Preview Saat Edit Form
             const signPreview = document.getElementById('releaseSignPreview');
-            const savedSign = data.releaseSign || '';
+            const savedSign = data.releaseSign ? String(data.releaseSign) : '';
             if(savedSign && savedSign.includes('<img')) {
                 signPreview.innerHTML = savedSign;
             } else {
@@ -1781,6 +1796,198 @@
                 loader.classList.add('hidden');
                 console.error('Error:', error);
             });
+        }
+        
+        // --- 8. LOGIKA CETAK PDF ---
+        async function generatePDF() {
+            if (!currentViewedRelease) return;
+            
+            // Tampilkan loading di tombol
+            const btnPrint = document.getElementById('btnPrintPDF');
+            const originalBtnContent = btnPrint.innerHTML;
+            btnPrint.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Generating...`;
+            btnPrint.disabled = true;
+
+            const data = currentViewedRelease;
+            
+            // Format Tanggal untuk PDF
+            let displayDate = '-';
+            if (data.flightDate) {
+                const fDate = new Date(data.flightDate);
+                displayDate = isNaN(fDate) ? data.flightDate : fDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year:'numeric' });
+            }
+
+            // Fungsi helper untuk parsing string gambar signature agar rapi di PDF
+            let signatureHTML = data.releaseSign ? String(data.releaseSign) : '';
+            if(signatureHTML.includes('<img')) {
+                signatureHTML = signatureHTML.replace('<img', '<img style="max-height: 80px; width: auto; object-fit: contain; margin: 0 auto;"');
+            } else {
+                signatureHTML = `<span style="font-family: monospace; font-style: italic;">${signatureHTML || '-'}</span>`;
+            }
+
+            // Fungsi untuk generate row Sortie HTML
+            function getSortieHTML(num) {
+                const sortieStr = data[`sortie${num}`];
+                let html = '';
+                if(sortieStr && sortieStr !== '{}' && sortieStr !== '{"routes":[],"destination":null}') {
+                    try {
+                        const sData = JSON.parse(sortieStr);
+                        if(sData.routes && sData.routes.length > 0) {
+                            html += `<div style="margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden;">
+                                        <div style="background-color: #f1f5f9; padding: 6px 10px; font-weight: bold; border-bottom: 1px solid #cbd5e1; font-size: 11px;">SORTIE ${num}</div>
+                                        <table style="width: 100%; text-align: left; border-collapse: collapse; font-size: 10px;">
+                                            <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                                <th style="padding: 6px; border-right: 1px solid #e2e8f0;">TYPE</th>
+                                                <th style="padding: 6px; border-right: 1px solid #e2e8f0;">LOC</th>
+                                                <th style="padding: 6px; border-right: 1px solid #e2e8f0;">ALTN</th>
+                                                <th style="padding: 6px; border-right: 1px solid #e2e8f0;">T/O ALTN</th>
+                                                <th style="padding: 6px; border-right: 1px solid #e2e8f0;">MIN FUEL</th>
+                                                <th style="padding: 6px;">FOB</th>
+                                            </tr>`;
+                            sData.routes.forEach((r, i) => {
+                                const title = i === 0 ? 'DEP' : 'INT';
+                                html += `<tr style="border-bottom: 1px solid #e2e8f0;">
+                                            <td style="padding: 6px; font-weight: bold; border-right: 1px solid #e2e8f0;">${title}</td>
+                                            <td style="padding: 6px; font-weight: bold; border-right: 1px solid #e2e8f0;">${(r.loc || '-').toUpperCase()}</td>
+                                            <td style="padding: 6px; border-right: 1px solid #e2e8f0;">${r.alt || '-'}</td>
+                                            <td style="padding: 6px; border-right: 1px solid #e2e8f0;">${r.toalt || '-'}</td>
+                                            <td style="padding: 6px; border-right: 1px solid #e2e8f0;">${r.minfuel || '0'} ${r.minfuel_unit || ''}</td>
+                                            <td style="padding: 6px;">${r.fob || '0'} ${r.fob_unit || ''}</td>
+                                         </tr>`;
+                            });
+                            if(sData.destination) {
+                                html += `<tr style="background-color: #ecfdf5;">
+                                            <td style="padding: 6px; font-weight: bold; color: #065f46; border-right: 1px solid #e2e8f0;">DEST</td>
+                                            <td style="padding: 6px; font-weight: bold; color: #065f46; border-right: 1px solid #e2e8f0;">${(sData.destination.loc || '-').toUpperCase()}</td>
+                                            <td style="padding: 6px; border-right: 1px solid #e2e8f0;">-</td>
+                                            <td style="padding: 6px; border-right: 1px solid #e2e8f0;">-</td>
+                                            <td style="padding: 6px; border-right: 1px solid #e2e8f0;">-</td>
+                                            <td style="padding: 6px; color: #065f46; font-weight: bold;">${sData.destination.fob || '0'} ${sData.destination.fob_unit || ''}</td>
+                                         </tr>`;
+                            }
+                            html += `</table></div>`;
+                        }
+                    } catch(e) {}
+                }
+                return html;
+            }
+
+            // Membangun elemen HTML Khusus Print
+            const printElement = document.createElement('div');
+            printElement.innerHTML = `
+                <div style="padding: 40px; font-family: 'Inter', sans-serif; color: #0f172a; width: 800px; background: white;">
+                    
+                    <!-- Kop Surat -->
+                    <div style="text-align: center; border-bottom: 3px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px;">
+                        <div style="height: 60px; margin-bottom: 10px;">
+                            <img src="https://lh3.googleusercontent.com/d/1WNcGjsZ9_Fp54xzOl01EYRqM6-wY5Zh7" style="height: 100%; object-fit: contain; margin: 0 auto;" crossorigin="anonymous" />
+                        </div>
+                        <h1 style="font-size: 24px; font-weight: 800; letter-spacing: 2px; margin: 0;">FLIGHT RELEASE</h1>
+                        <h2 style="font-size: 16px; font-weight: 600; color: #475569; margin: 5px 0 0 0; letter-spacing: 1px;">PT. TRANSWISATA PRIMA AVIATION</h2>
+                    </div>
+
+                    <!-- Row 1: Flight Info Grid -->
+                    <table style="width: 100%; margin-bottom: 15px; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 12px;">
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; width: 33.33%;"><span style="color: #64748b; font-size: 10px; display: block; font-weight: bold;">DATE</span><b>${displayDate}</b></td>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; width: 33.33%;"><span style="color: #64748b; font-size: 10px; display: block; font-weight: bold;">A/C TYPE</span><b>${data.acType || '-'}</b></td>
+                            <td style="padding: 8px; border: 1px solid #cbd5e1; width: 33.33%;"><span style="color: #64748b; font-size: 10px; display: block; font-weight: bold;">A/C REG</span><b>${data.acReg || '-'}</b></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f8fafc;">
+                                <div style="display: flex; justify-content: space-between;">
+                                    <div><span style="color: #64748b; font-size: 10px; font-weight: bold;">TIME OF SIGN (UTC):</span> <b style="margin-left: 5px;">${extractTime(data.timeOfSign) || '-'}</b></div>
+                                    <div><span style="color: #64748b; font-size: 10px; font-weight: bold;">VALID UNTIL (UTC):</span> <b style="margin-left: 5px;">${extractTime(data.validUntil) || '-'}</b></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Row 2: Crew Comp -->
+                    <div style="font-size: 11px; font-weight: bold; color: #0f172a; margin-bottom: 5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">CREW COMPOSITION</div>
+                    <table style="width: 100%; margin-bottom: 15px; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">
+                        <tr>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1; width: 25%;"><span style="color: #64748b; font-size: 9px; display: block;">PIC 1</span><b>${data.pic1 || '-'}</b></td>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1; width: 25%;"><span style="color: #64748b; font-size: 9px; display: block;">PIC 2</span><b>${data.pic2 || '-'}</b></td>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1; width: 25%;"><span style="color: #64748b; font-size: 9px; display: block;">SIC 1</span><b>${data.sic1 || '-'}</b></td>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1; width: 25%;"><span style="color: #64748b; font-size: 9px; display: block;">SIC 2</span><b>${data.sic2 || '-'}</b></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1;"><span style="color: #64748b; font-size: 9px; display: block;">ENG 1</span><b>${data.eng1 || '-'}</b></td>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1;"><span style="color: #64748b; font-size: 9px; display: block;">ENG 2</span><b>${data.eng2 || '-'}</b></td>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1;"><span style="color: #64748b; font-size: 9px; display: block;">CABIN 1</span><b>${data.cs1 || '-'}</b></td>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1;"><span style="color: #64748b; font-size: 9px; display: block;">CABIN 2</span><b>${data.cs2 || '-'}</b></td>
+                        </tr>
+                    </table>
+
+                    <!-- Row 3: Ops & Checklist -->
+                    <div style="font-size: 11px; font-weight: bold; color: #0f172a; margin-bottom: 5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">OPERATIONS & CONDITIONS</div>
+                    <table style="width: 100%; margin-bottom: 15px; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11px;">
+                        <tr>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1; width: 50%;"><span style="color: #64748b; font-size: 9px; display: block;">PARKING STAND</span><b>${data.parkingStand || '-'}</b></td>
+                            <td style="padding: 6px; border: 1px solid #cbd5e1; width: 50%;"><span style="color: #64748b; font-size: 9px; display: block;">TYPE OF OPERATION</span><b>${data.typeOfOp || '-'}</b></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f8fafc;">
+                                <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                                    <div><span style="color: #64748b; font-size: 9px; font-weight:bold;">MEL:</span> <b>${data.mel || 'NIL'}</b></div>
+                                    <div><span style="color: #64748b; font-size: 9px; font-weight:bold;">NOTAM:</span> <b>${data.notam || 'NIL'}</b></div>
+                                    <div><span style="color: #64748b; font-size: 9px; font-weight:bold;">EXT. WATER:</span> <b>${data.extendedWater || 'NIL'}</b></div>
+                                    <div><span style="color: #64748b; font-size: 9px; font-weight:bold;">NOTOC:</span> <b>${data.notoc || 'NIL'}</b></div>
+                                    <div><span style="color: #64748b; font-size: 9px; font-weight:bold;">WX FORECAST:</span> <b>${data.weather === 'YES' ? 'YES' : 'NIL'}</b></div>
+                                    <div><span style="color: #64748b; font-size: 9px; font-weight:bold;">PAYLOAD:</span> <b>${data.payload === 'YES' ? 'YES' : 'NIL'}</b></div>
+                                    <div><span style="color: #64748b; font-size: 9px; font-weight:bold;">FLIGHT PLAN:</span> <b>${data.flightPlan === 'YES' ? 'YES' : 'NIL'}</b></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Row 4: Routes -->
+                    <div style="font-size: 11px; font-weight: bold; color: #0f172a; margin-bottom: 5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">FLIGHT ROUTES</div>
+                    <div style="margin-bottom: 15px;">
+                        ${getSortieHTML(1)}
+                        ${getSortieHTML(2)}
+                    </div>
+
+                    <!-- Row 5: Other Brief -->
+                    <div style="font-size: 11px; font-weight: bold; color: #0f172a; margin-bottom: 5px; border-bottom: 1px solid #e2e8f0; padding-bottom: 3px;">OTHER BRIEF</div>
+                    <div style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 11px; min-height: 60px; white-space: pre-wrap; margin-bottom: 25px;">${data.otherBrief || '-'}</div>
+
+                    <!-- Footer: Signatures -->
+                    <div style="display: flex; justify-content: flex-end;">
+                        <div style="text-align: center; width: 250px;">
+                            <p style="font-size: 11px; font-weight: bold; margin-bottom: 5px;">PILOT IN COMMAND RELEASE</p>
+                            <div style="height: 90px; border-bottom: 1px dashed #94a3b8; display: flex; align-items: center; justify-content: center; margin-bottom: 5px;">
+                                ${signatureHTML}
+                            </div>
+                            <p style="font-weight: bold; font-size: 12px; margin: 0; text-transform: uppercase;">${data.releasePicName || '( .......................................... )'}</p>
+                            <p style="font-size: 10px; color: #475569; margin: 2px 0 0 0;">LIC: ${data.releaseLicenceNo || '....................'}</p>
+                        </div>
+                    </div>
+
+                </div>
+            `;
+
+            // Konfigurasi html2pdf
+            const opt = {
+                margin:       [10, 0, 10, 0], // Margin top, left, bottom, right in mm
+                filename:     `Flight_Release_${data.acReg || 'AC'}_${displayDate.replace(/\//g, '-')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false }, // useCORS penting agar logo & ttd dari Google Drive ter-render
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            // Generate & Download
+            try {
+                await html2pdf().set(opt).from(printElement).save();
+            } catch (error) {
+                console.error("PDF Generation Error:", error);
+                alert("Terjadi kesalahan saat memproses PDF. Pastikan koneksi internet stabil.");
+            } finally {
+                // Kembalikan tombol ke state semula
+                btnPrint.innerHTML = originalBtnContent;
+                btnPrint.disabled = false;
+            }
         }
     </script>
 </body>
