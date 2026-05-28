@@ -1808,13 +1808,12 @@
                 displayDate = isNaN(fDate) ? data.flightDate : fDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year:'numeric' });
             }
 
-            // Signature
+            // Signature (Ukuran proporsional agak besar namun tetap pas di 1 lembar A4)
             let signatureHTML = data.releaseSign ? String(data.releaseSign) : '';
             if(signatureHTML.includes('<img')) {
-                // Style in-line sangat diperbesar agar tampil besar di layout print
-                signatureHTML = signatureHTML.replace('<img', '<img style="max-height: 100px; max-width: 250px; object-fit: contain; margin: 0 auto;"');
+                signatureHTML = signatureHTML.replace('<img', '<img style="max-height: 75px; max-width: 220px; object-fit: contain; margin: 0 auto;"');
             } else {
-                signatureHTML = `<span style="font-family: monospace; font-style: italic; font-size: 14px;">${signatureHTML || '-'}</span>`;
+                signatureHTML = `<span style="font-family: monospace; font-style: italic; font-size: 12px;">${signatureHTML || '-'}</span>`;
             }
 
             // Helper rendering Sortie (Pasti 1 DEP, 4 INT, 1 DEST)
@@ -1875,59 +1874,62 @@
                 <head>
                     <title>Flight Release - ${data.acReg || 'AC'}</title>
                     <style>
-                        @page { size: A4 portrait; margin: 12mm; }
+                        /* Margin A4 disesuaikan agar semuanya Fit di 1 Page */
+                        @page { size: A4 portrait; margin: 10mm; }
                         * { box-sizing: border-box; }
                         body { 
                             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-                            font-size: 11px; 
+                            font-size: 10px; 
                             color: #1e293b; 
-                            line-height: 1.4; 
+                            line-height: 1.3; 
                             margin: 0; 
                             padding: 0; 
                             -webkit-print-color-adjust: exact; 
                             print-color-adjust: exact;
                         }
-                        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 15px; }
-                        .logo { height: 50px; width: auto; object-fit: contain; }
-                        .header-text { text-align: right; }
-                        .header-title { font-size: 24px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
-                        .header-subtitle { font-size: 12px; font-weight: 700; margin: 2px 0 0 0; color: #475569; }
                         
-                        .section { margin-bottom: 15px; }
-                        .section-title { font-weight: 800; font-size: 12px; background-color: #f1f5f9; padding: 6px 10px; border-left: 4px solid #d97706; margin-bottom: 8px; color: #0f172a; text-transform: uppercase; }
+                        /* Posisi Header Rata Tengah (Center Aligned) */
+                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+                        .logo { height: 45px; margin: 0 auto 5px auto; display: block; object-fit: contain; }
+                        .header-text { text-align: center; }
+                        .header-title { font-size: 22px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
+                        .header-subtitle { font-size: 11px; font-weight: 700; margin: 2px 0 0 0; color: #475569; }
                         
-                        .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-                        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-                        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+                        .section { margin-bottom: 12px; }
+                        .section-title { font-weight: 800; font-size: 11px; background-color: #f1f5f9; padding: 5px 8px; border-left: 4px solid #d97706; margin-bottom: 6px; color: #0f172a; text-transform: uppercase; }
                         
-                        .box { border: 1px solid #cbd5e1; padding: 6px 10px; border-radius: 4px; background: #fff; }
-                        .box-label { font-size: 9px; color: #64748b; text-transform: uppercase; margin-bottom: 3px; font-weight: 600; }
-                        .box-val { font-weight: 700; font-size: 12px; color: #0f172a; }
+                        .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+                        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+                        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
                         
-                        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-                        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 10px; }
-                        th { background-color: #f8fafc; font-weight: 700; color: #475569; font-size: 9px; text-transform: uppercase; }
+                        .box { border: 1px solid #cbd5e1; padding: 5px 8px; border-radius: 4px; background: #fff; }
+                        .box-label { font-size: 8px; color: #64748b; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
+                        .box-val { font-weight: 700; font-size: 11px; color: #0f172a; }
                         
-                        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 9px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+                        th, td { border: 1px solid #cbd5e1; padding: 5px 6px; text-align: center; font-size: 9px; }
+                        th { background-color: #f8fafc; font-weight: 700; color: #475569; font-size: 8px; text-transform: uppercase; }
+                        
+                        .badge { display: inline-block; padding: 2px 4px; border-radius: 3px; font-weight: 700; font-size: 8px; }
                         .badge-yes { background-color: #d1fae5; color: #047857; border: 1px solid #6ee7b7; }
                         .badge-nil { background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
                         
-                        .checklist-container { border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px; display: flex; justify-content: space-between; }
+                        .checklist-container { border: 1px solid #cbd5e1; border-radius: 4px; padding: 6px 8px; display: flex; justify-content: space-between; }
                         .check-item { text-align: center; }
                         
-                        .other-brief { border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; min-height: 50px; font-size: 10px; white-space: pre-wrap; }
+                        .other-brief { border: 1px solid #cbd5e1; padding: 8px; border-radius: 4px; min-height: 40px; font-size: 9px; white-space: pre-wrap; }
                         
-                        .footer { margin-top: 20px; display: flex; justify-content: flex-end; page-break-inside: avoid; }
-                        .sig-box { width: 300px; text-align: center; }
-                        .sig-title { font-weight: 800; font-size: 11px; margin-bottom: 5px; color: #0f172a; }
-                        .sig-area { height: 110px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; }
-                        .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 5px auto; width: 85%; }
-                        .sig-name { font-weight: 800; font-size: 12px; text-transform: uppercase; color: #0f172a; }
-                        .sig-lic { font-size: 10px; color: #64748b; margin-top: 2px; }
+                        .footer { margin-top: 15px; display: flex; justify-content: flex-end; page-break-inside: avoid; }
+                        .sig-box { width: 280px; text-align: center; }
+                        .sig-title { font-weight: 800; font-size: 10px; margin-bottom: 2px; color: #0f172a; }
+                        .sig-area { height: 80px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+                        .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 4px auto; width: 85%; }
+                        .sig-name { font-weight: 800; font-size: 11px; text-transform: uppercase; color: #0f172a; }
+                        .sig-lic { font-size: 9px; color: #64748b; margin-top: 2px; }
                     </style>
                 </head>
                 <body>
-                    <!-- Header -->
+                    <!-- Header (Centered) -->
                     <div class="header">
                         <img src="https://lh3.googleusercontent.com/d/1WNcGjsZ9_Fp54xzOl01EYRqM6-wY5Zh7" class="logo" alt="Logo" crossorigin="anonymous" />
                         <div class="header-text">
@@ -1951,7 +1953,7 @@
                     <!-- 2. Crew Composition -->
                     <div class="section">
                         <div class="section-title">2. CREW COMPOSITION</div>
-                        <div class="grid-4" style="margin-bottom: 6px;">
+                        <div class="grid-4" style="margin-bottom: 4px;">
                             <div class="box"><div class="box-label">PIC 1</div><div class="box-val">${data.pic1 || '-'}</div></div>
                             <div class="box"><div class="box-label">SIC 1</div><div class="box-val">${data.sic1 || '-'}</div></div>
                             <div class="box"><div class="box-label">ENG 1</div><div class="box-val">${data.eng1 || '-'}</div></div>
@@ -1968,7 +1970,7 @@
                     <!-- 3. Operations & Conditions -->
                     <div class="section">
                         <div class="section-title">3. OPERATIONS & CONDITIONS</div>
-                        <div class="grid-2" style="margin-bottom: 6px;">
+                        <div class="grid-2" style="margin-bottom: 4px;">
                             <div class="box"><div class="box-label">PARKING STAND</div><div class="box-val">${data.parkingStand || '-'}</div></div>
                             <div class="box"><div class="box-label">TYPE OF OPERATION</div><div class="box-val">${data.typeOfOp || '-'}</div></div>
                         </div>
