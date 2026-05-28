@@ -1891,6 +1891,11 @@
             // Ambil nomor dokumen PDF menggunakan variabel global Settings
             const pdfFormDocNumber = globalDocNum;
 
+            // Simpan title asli halaman untuk dikembalikan nanti
+            const originalDocumentTitle = document.title;
+            // Ubah title halaman utama agar dialog Print menangkap nama file ini
+            document.title = documentTitle;
+
             // Signature (Ukuran proporsional agak besar namun tetap pas di 1 lembar A4)
             let signatureHTML = data.releaseSign ? String(data.releaseSign) : '';
             if(signatureHTML.includes('<img')) {
@@ -2102,18 +2107,6 @@
 
                     <!-- Form Document Number Dikeluarkan dari footer wrapper agar menempel secara absolut di halaman cetak -->
                     <div class="doc-num">${pdfFormDocNumber}</div>
-
-                    <script>
-                        // Set title document iframe secara eksplisit untuk nama file default Save as PDF
-                        document.title = "${documentTitle}";
-                        
-                        // Otomatis memicu dialog print setelah semua aset (terutama gambar) selesai dimuat
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.print();
-                            }, 500); // Jeda aman untuk rendering styling/image
-                        };
-                    <\/script>
                 </body>
                 </html>
             `;
@@ -2136,6 +2129,17 @@
             doc.open();
             doc.write(printHTML);
             doc.close();
+
+            // Tunggu aset dirender, trigger print, lalu kembalikan title asli
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+                
+                // Kembalikan title web seperti semula setelah print dialog muncul
+                setTimeout(() => {
+                    document.title = originalDocumentTitle;
+                }, 1000);
+            }, 800);
         }
     </script>
 </body>
