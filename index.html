@@ -2098,12 +2098,18 @@
                     <div class="doc-num">${pdfFormDocNumber}</div>
 
                     <script>
-                        // Ubah nama dokumen pada layer iframe sebelum print
-                        document.title = "${documentTitle}";
+                        // Ubah nama dokumen pada parent window agar default Save As PDF sesuai
+                        var originalTitle = window.parent.document.title;
+                        window.parent.document.title = "${documentTitle}";
+                        
                         // Otomatis memicu dialog print setelah semua aset (terutama gambar) selesai dimuat
                         window.onload = function() {
                             setTimeout(function() {
                                 window.print();
+                                // Kembalikan judul asli ke "Ecrew Flight Release" setelah dialog tertutup
+                                setTimeout(function() {
+                                    window.parent.document.title = originalTitle;
+                                }, 1000);
                             }, 500); // Jeda aman untuk rendering styling/image
                         };
                     <\/script>
