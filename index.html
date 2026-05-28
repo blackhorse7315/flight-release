@@ -157,7 +157,7 @@
             <div class="flex justify-between items-center mb-6">
                 <div>
                     <h2 class="text-2xl font-bold text-brand-dark border-l-4 border-brand-gold pl-3">Admin Dashboard</h2>
-                    <p class="text-sm text-slate-500 mt-1 pl-4">Manage Crew Databases for Dropdowns.</p>
+                    <p class="text-sm text-slate-500 mt-1 pl-4">Manage System Settings & Crew Databases.</p>
                 </div>
                 <button onclick="showDashboard()" class="text-slate-500 hover:text-brand-dark font-medium flex items-center gap-1 text-sm bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -166,6 +166,19 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- System Settings Admin -->
+                <div class="glass-card p-6 rounded-3xl shadow-sm border border-slate-200 lg:col-span-2">
+                    <h3 class="text-sm font-bold uppercase tracking-widest text-brand-dark mb-4 pb-2 border-b border-slate-200">System Settings</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 items-end mb-2">
+                        <div class="flex-grow w-full">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Form Document Number</label>
+                            <input type="text" id="adm_doc_num" placeholder="Doc. No F/TWA-OPS/007-02" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-brand-gold outline-none">
+                        </div>
+                        <button onclick="saveDocNum()" class="bg-brand-dark hover:bg-slate-800 text-white font-medium px-6 py-2 rounded-lg transition text-sm whitespace-nowrap">Save Setting</button>
+                    </div>
+                    <p class="text-[10px] text-slate-500">Nomor ini akan otomatis disematkan pada pojok kanan bawah hasil Print PDF dan dikirimkan ke database.</p>
+                </div>
+
                 <!-- PIC Admin -->
                 <div class="glass-card p-6 rounded-3xl shadow-sm border border-slate-200">
                     <h3 class="text-sm font-bold uppercase tracking-widest text-brand-dark mb-4 pb-2 border-b border-slate-200">PIC Management</h3>
@@ -714,7 +727,7 @@
 
     <script>
         // --- 1. SETUP GOOGLE SCRIPT URL DISINI ---
-        const GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxm8O8JSzGtL35OcIDbAz7UcIO1q7k-2_NUdaSXLnq6iHqxemXbCezgmLxAthJikWld/exec";
+        const GOOGLE_SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzqBq7HSVJQ6-xPxDNpRPqxiOJdlDm8TLejCA30c6VrFLcGEjCgGvhGqOtsUUXBg9Un/exec";
 
         let globalReleases = [];
         let currentEditId = null;
@@ -726,6 +739,9 @@
 
         // Variable untuk menyimpan data release yang sedang dilihat di modal
         let currentViewedRelease = null;
+
+        // Load Document Number global dari local storage (Default Doc. No F/TWA-OPS/007-02)
+        let globalDocNum = localStorage.getItem('ecrew_doc_num') || "Doc. No F/TWA-OPS/007-02";
 
         // --- NEW: CREW DATABASE MANAGEMENT (Admin & Dropdowns) ---
         let crewDB = JSON.parse(localStorage.getItem('ecrew_db')) || { pic: [], sic: [], eng: [], cs: [] };
@@ -751,6 +767,37 @@
                 }).then(() => {
                     console.log("Crew Database synced to Google Sheets");
                 }).catch(e => console.error("Sync Error:", e));
+            }
+        }
+
+        // Logic Save Document Number (Admin)
+        function saveDocNum() {
+            const val = document.getElementById('adm_doc_num').value.trim();
+            if(val) {
+                globalDocNum = val;
+                localStorage.setItem('ecrew_doc_num', globalDocNum);
+                
+                // Simpan ke Google Sheets (Tab SettingsDB)
+                if(GOOGLE_SHEET_WEBAPP_URL !== "PASTE_URL_GOOGLE_APP_SCRIPT_DISINI" && GOOGLE_SHEET_WEBAPP_URL !== "") {
+                    fetch(GOOGLE_SHEET_WEBAPP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: 'save_settings', 
+                            formDocNumber: globalDocNum 
+                        })
+                    }).then(() => {
+                        showModal('Success!', 'Form Document Number has been updated and synced to database.', true);
+                    }).catch(e => {
+                        console.error("Sync Error:", e);
+                        showModal('Warning', 'Saved locally but failed to sync to database.', false);
+                    });
+                } else {
+                    showModal('Success!', 'Form Document Number has been updated locally.', true);
+                }
+            } else {
+                alert('Document Number cannot be empty!');
             }
         }
 
@@ -848,6 +895,8 @@
             loadReleases();
             populateCrewSelects();
             renderAdminLists();
+            // Isi otomatis input admin doc num
+            document.getElementById('adm_doc_num').value = globalDocNum;
         });
 
         function showDashboard() {
@@ -1242,6 +1291,8 @@
             dataObj.sortie1 = JSON.stringify(extractSortieData(1));
             dataObj.sortie2 = JSON.stringify(extractSortieData(2));
 
+            // HAPUS: dataObj.formDocNumber = globalDocNum; karena sudah tidak menempel per-row
+
             // Kirim ke Google Sheets
             fetch(GOOGLE_SHEET_WEBAPP_URL, {
                 method: 'POST',
@@ -1341,6 +1392,13 @@
                                 renderAdminLists();
                             }
                         } catch(e) { console.error("Failed to parse cloud crew data", e); }
+                    }
+
+                    // NEW: Tarik data Settings (Form Document Number)
+                    if(result.settings && result.settings.formDocNumber) {
+                        globalDocNum = result.settings.formDocNumber;
+                        localStorage.setItem('ecrew_doc_num', globalDocNum);
+                        document.getElementById('adm_doc_num').value = globalDocNum;
                     }
                 } else {
                     container.innerHTML = '<div class="text-center py-10 bg-white rounded-2xl border border-slate-200 text-slate-500">Belum ada data Flight Release.</div>';
@@ -1821,6 +1879,9 @@
             const regTitle = data.acReg || 'AC';
             const documentTitle = `Flight Release_${regTitle}_${fileDateStr}`;
 
+            // Ambil nomor dokumen PDF menggunakan variabel global Settings
+            const pdfFormDocNumber = globalDocNum;
+
             // Signature (Ukuran proporsional agak besar namun tetap pas di 1 lembar A4)
             let signatureHTML = data.releaseSign ? String(data.releaseSign) : '';
             if(signatureHTML.includes('<img')) {
@@ -1933,7 +1994,7 @@
                         
                         .other-brief { border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px; min-height: 25px; font-size: 9px; white-space: pre-wrap; }
                         
-                        .footer { margin-top: 10px; display: flex; justify-content: flex-end; page-break-inside: avoid; }
+                        .footer { margin-top: 10px; display: flex; justify-content: flex-end; page-break-inside: avoid; position: relative; padding-bottom: 15px; }
                         .sig-box { width: 260px; text-align: center; }
                         .sig-title { font-weight: 800; font-size: 10px; margin-bottom: 2px; color: #0f172a; }
                         /* Tinggi ditambah agar gambar lebih besar tidak terpotong */
@@ -1943,6 +2004,9 @@
                         .sig-name { font-weight: 800; font-size: 12px; text-transform: uppercase; color: #0f172a; margin-bottom: 2px;}
                         .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 3px auto; width: 85%; }
                         .sig-lic { font-size: 9px; color: #64748b; margin-top: 2px; }
+                        
+                        /* Form Doc Number Styling */
+                        .doc-num { position: absolute; bottom: 0; right: 0; font-size: 8px; color: #64748b; font-weight: 800; text-transform: uppercase; }
                     </style>
                 </head>
                 <body>
@@ -2025,6 +2089,7 @@
                             <div class="sig-line"></div>
                             <div class="sig-lic">LIC: ${data.releaseLicenceNo || '....................'}</div>
                         </div>
+                        <div class="doc-num">${pdfFormDocNumber}</div>
                     </div>
 
                     <script>
