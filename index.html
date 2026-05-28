@@ -1522,30 +1522,33 @@
             // Urutkan yang terbaru di atas
             filteredReleases.sort((a, b) => getValidDate(b) - getValidDate(a));
 
-            let html = '<div class="divide-y divide-slate-200">';
+            let html = '<div class="divide-y divide-slate-100">';
             filteredReleases.forEach(release => {
                 const rDate = getValidDate(release);
                 const formattedDate = rDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                 
                 html += `
-                    <div class="p-5 bg-white hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 group cursor-pointer" onclick="openDetailModal('${release.timestamp}')">
-                        <div class="flex items-start gap-4">
+                    <div class="p-4 bg-white hover:bg-slate-50 transition flex items-center justify-between gap-3 group cursor-pointer" onclick="openDetailModal('${release.timestamp}')">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
                             <div class="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-brand-goldlight group-hover:text-brand-gold transition-colors flex items-center justify-center text-slate-500 shrink-0 font-bold text-xs shadow-inner border border-slate-200 group-hover:border-brand-gold/30">
                                 ${release.acReg ? release.acReg.slice(-2) : 'A/C'}
                             </div>
-                            <div>
-                                <p class="font-bold text-slate-800 text-base">${release.acReg || '-'} <span class="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded ml-2 border border-slate-200">${formattedDate}</span></p>
-                                <p class="text-sm text-slate-500 mt-1">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-0.5">
+                                    <span class="font-bold text-slate-800 text-sm truncate">${release.acReg || '-'}</span>
+                                    <span class="text-[9px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 shrink-0">${formattedDate}</span>
+                                </div>
+                                <div class="text-[10px] text-slate-500 truncate">
                                     PIC: <span class="font-semibold text-slate-700">${release.pic1 || '-'}</span> &bull; 
                                     Op: <span class="font-semibold text-slate-700">${release.typeOfOp || '-'}</span> &bull; 
                                     Std: <span class="font-semibold text-slate-700">${release.parkingStand || '-'}</span>
-                                </p>
+                                </div>
                             </div>
                         </div>
-                        <div class="flex flex-wrap gap-1 sm:justify-end">
-                            ${release.mel === 'YES' ? '<span class="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded border border-red-100">MEL</span>' : ''}
-                            ${release.notam === 'YES' ? '<span class="px-2 py-1 bg-amber-50 text-amber-600 text-[10px] font-bold rounded border border-amber-100">NOTAM</span>' : ''}
-                            ${release.weather === 'YES' ? '<span class="px-2 py-1 bg-sky-50 text-sky-600 text-[10px] font-bold rounded border border-sky-100">WX</span>' : ''}
+                        <div class="flex gap-1 shrink-0">
+                            ${release.mel === 'YES' ? '<span class="px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] font-bold rounded border border-red-100">MEL</span>' : ''}
+                            ${release.notam === 'YES' ? '<span class="px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[9px] font-bold rounded border border-amber-100">NOTAM</span>' : ''}
+                            ${release.weather === 'YES' ? '<span class="px-1.5 py-0.5 bg-sky-50 text-sky-600 text-[9px] font-bold rounded border border-sky-100">WX</span>' : ''}
                         </div>
                     </div>`;
             });
