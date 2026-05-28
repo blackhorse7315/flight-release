@@ -1864,13 +1864,19 @@
             
             // Format Tanggal untuk Tampilan di Kop Tabel
             let displayDate = '-';
-            let fileDateStr = ''; // String khusus untuk nama file "28 Mei 2026"
+            let fileDateStr = ''; // String khusus untuk nama file
             
             if (data.flightDate) {
-                const fDate = new Date(data.flightDate);
-                if(!isNaN(fDate)) {
+                // Parsing manual agar tidak terjadi pergeseran tanggal karena Timezone
+                const dateParts = data.flightDate.includes('T') ? data.flightDate.split('T')[0].split('-') : data.flightDate.split('-');
+                if (dateParts.length === 3) {
+                    const year = parseInt(dateParts[0], 10);
+                    const month = parseInt(dateParts[1], 10) - 1; // Bulan di JS dimulai dari 0
+                    const day = parseInt(dateParts[2], 10);
+                    const fDate = new Date(year, month, day);
+                    
                     displayDate = fDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year:'numeric' });
-                    // Gunakan format Indonesia untuk penamaan file
+                    // Format ke Indonesia (misal: 28 Mei 2026) secara dinamis
                     fileDateStr = fDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
                 } else {
                     displayDate = data.flightDate;
@@ -1878,7 +1884,7 @@
                 }
             }
 
-            // Konstruksi Nama Dokumen: Flight Release_PK-TWV_28 Mei 2026
+            // Konstruksi Nama Dokumen Otomatis menyesuaikan data yang dipilih
             const regTitle = data.acReg || 'AC';
             const documentTitle = `Flight Release_${regTitle}_${fileDateStr}`;
 
@@ -2098,18 +2104,13 @@
                     <div class="doc-num">${pdfFormDocNumber}</div>
 
                     <script>
-                        // Ubah nama dokumen pada parent window agar default Save As PDF sesuai
-                        var originalTitle = window.parent.document.title;
-                        window.parent.document.title = "${documentTitle}";
+                        // Set title document iframe secara eksplisit untuk nama file default Save as PDF
+                        document.title = "${documentTitle}";
                         
                         // Otomatis memicu dialog print setelah semua aset (terutama gambar) selesai dimuat
                         window.onload = function() {
                             setTimeout(function() {
                                 window.print();
-                                // Kembalikan judul asli ke "Ecrew Flight Release" setelah dialog tertutup
-                                setTimeout(function() {
-                                    window.parent.document.title = originalTitle;
-                                }, 1000);
                             }, 500); // Jeda aman untuk rendering styling/image
                         };
                     <\/script>
