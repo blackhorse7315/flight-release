@@ -1801,20 +1801,33 @@
             if (!currentViewedRelease) return;
             const data = currentViewedRelease;
             
-            // Format Tanggal
+            // Format Tanggal untuk Tampilan di Kop Tabel
             let displayDate = '-';
+            let fileDateStr = ''; // String khusus untuk nama file "28 Mei 2026"
+            
             if (data.flightDate) {
                 const fDate = new Date(data.flightDate);
-                displayDate = isNaN(fDate) ? data.flightDate : fDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year:'numeric' });
+                if(!isNaN(fDate)) {
+                    displayDate = fDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year:'numeric' });
+                    // Gunakan format Indonesia untuk penamaan file
+                    fileDateStr = fDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                } else {
+                    displayDate = data.flightDate;
+                    fileDateStr = data.flightDate.replace(/\//g, '-');
+                }
             }
+
+            // Konstruksi Nama Dokumen: Flight Release_PK-TWV_28 Mei 2026
+            const regTitle = data.acReg || 'AC';
+            const documentTitle = `Flight Release_${regTitle}_${fileDateStr}`;
 
             // Signature (Ukuran proporsional agak besar namun tetap pas di 1 lembar A4)
             let signatureHTML = data.releaseSign ? String(data.releaseSign) : '';
             if(signatureHTML.includes('<img')) {
-                // Style in-line sangat diperbesar agar tampil besar di layout print
-                signatureHTML = signatureHTML.replace('<img', '<img style="max-height: 60px; max-width: 200px; object-fit: contain; margin: 0 auto;"');
+                // Diperbesar ukurannya secara signifikan
+                signatureHTML = signatureHTML.replace('<img', '<img style="max-height: 90px; max-width: 250px; object-fit: contain; margin: 0 auto;"');
             } else {
-                signatureHTML = `<span style="font-family: monospace; font-style: italic; font-size: 12px;">${signatureHTML || '-'}</span>`;
+                signatureHTML = `<span style="font-family: monospace; font-style: italic; font-size: 14px;">${signatureHTML || '-'}</span>`;
             }
 
             // Helper rendering Sortie (Pasti 1 DEP, 4 INT, 1 DEST)
@@ -1873,7 +1886,7 @@
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Flight Release - ${data.acReg || 'AC'}</title>
+                    <title>${documentTitle}</title>
                     <style>
                         /* Margin A4 disesuaikan agar semuanya Fit di 1 Page */
                         @page { size: A4 portrait; margin: 8mm; }
@@ -1890,7 +1903,7 @@
                         }
                         
                         /* Posisi Header Rata Tengah (Center Aligned) */
-                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 8px; }
+                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 8px; }
                         .logo { height: 40px; margin: 0 auto 4px auto; display: block; object-fit: contain; }
                         .header-text { text-align: center; }
                         .header-title { font-size: 20px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
@@ -1921,11 +1934,14 @@
                         .other-brief { border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px; min-height: 25px; font-size: 9px; white-space: pre-wrap; }
                         
                         .footer { margin-top: 10px; display: flex; justify-content: flex-end; page-break-inside: avoid; }
-                        .sig-box { width: 250px; text-align: center; }
+                        .sig-box { width: 260px; text-align: center; }
                         .sig-title { font-weight: 800; font-size: 10px; margin-bottom: 2px; color: #0f172a; }
-                        .sig-area { height: 65px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
-                        .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 4px auto; width: 85%; }
-                        .sig-name { font-weight: 800; font-size: 11px; text-transform: uppercase; color: #0f172a; }
+                        /* Tinggi ditambah agar gambar lebih besar tidak terpotong */
+                        .sig-area { height: 95px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+                        
+                        /* Posisi margin disesuaikan karena garis ada di bawah nama */
+                        .sig-name { font-weight: 800; font-size: 12px; text-transform: uppercase; color: #0f172a; margin-bottom: 2px;}
+                        .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 3px auto; width: 85%; }
                         .sig-lic { font-size: 9px; color: #64748b; margin-top: 2px; }
                     </style>
                 </head>
@@ -2004,13 +2020,16 @@
                         <div class="sig-box">
                             <div class="sig-title">PILOT IN COMMAND RELEASE</div>
                             <div class="sig-area">${signatureHTML}</div>
-                            <div class="sig-line"></div>
+                            <!-- Nama dan Garis Posisi Baru -->
                             <div class="sig-name">${data.releasePicName || '( ........................................ )'}</div>
+                            <div class="sig-line"></div>
                             <div class="sig-lic">LIC: ${data.releaseLicenceNo || '....................'}</div>
                         </div>
                     </div>
 
                     <script>
+                        // Ubah nama dokumen pada layer iframe sebelum print
+                        document.title = "${documentTitle}";
                         // Otomatis memicu dialog print setelah semua aset (terutama gambar) selesai dimuat
                         window.onload = function() {
                             setTimeout(function() {
