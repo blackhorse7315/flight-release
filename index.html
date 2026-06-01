@@ -1439,10 +1439,9 @@
             try {
                 const dateObj = new Date(timeStr);
                 if (!isNaN(dateObj.getTime())) {
-                    // Karena string dari sheets bersifat UTC (berakhiran Z atau representasi murni)
-                    // kita kembalikan kembali nilainya ke waktu jam dan menit awal
-                    const h = dateObj.getUTCHours().toString().padStart(2, '0');
-                    const m = dateObj.getUTCMinutes().toString().padStart(2, '0');
+                    // Menggunakan getHours() & getMinutes() untuk memastikan waktu ditarik kembali ke zona waktu LOKAL
+                    const h = dateObj.getHours().toString().padStart(2, '0');
+                    const m = dateObj.getMinutes().toString().padStart(2, '0');
                     return `${h}:${m}`;
                 }
             } catch(e) {}
@@ -1579,17 +1578,33 @@
         }
 
         function updateDashboardStats(data) {
-            // Gunakan format string YYYY-MM-DD untuk membandingkan agar lebih stabil dengan input type="date"
-            const todayStr = new Date().toISOString().split('T')[0];
+            // Gunakan konversi zona waktu lokal untuk membandingkan hari ini
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+            
             let todayCount = 0;
             
             data.forEach(item => {
                 let itemDateStr = '';
                 if(item.flightDate) {
-                    itemDateStr = item.flightDate; // Sudah dalam format YYYY-MM-DD
+                    const d = new Date(item.flightDate);
+                    if(!isNaN(d.getTime())){
+                        const iY = d.getFullYear();
+                        const iM = String(d.getMonth() + 1).padStart(2, '0');
+                        const iD = String(d.getDate()).padStart(2, '0');
+                        itemDateStr = `${iY}-${iM}-${iD}`;
+                    }
                 } else if(item.timestamp) {
-                    const ts = new Date(item.timestamp);
-                    if(!isNaN(ts)) itemDateStr = ts.toISOString().split('T')[0];
+                    const ts = new Date(parseInt(item.timestamp));
+                    if(!isNaN(ts.getTime())){
+                        const iY = ts.getFullYear();
+                        const iM = String(ts.getMonth() + 1).padStart(2, '0');
+                        const iD = String(ts.getDate()).padStart(2, '0');
+                        itemDateStr = `${iY}-${iM}-${iD}`;
+                    }
                 }
                 
                 if(itemDateStr === todayStr) todayCount++;
@@ -1730,25 +1745,21 @@
         }
 
         function fillFormWithData(data) {
-            // Perbaikan Format Tanggal untuk input type="date"
+            // Perbaikan Format Tanggal untuk input type="date" menghindari bug Timezone
             let formattedDate = '';
             if (data.flightDate) {
-                if (data.flightDate.includes('T')) {
-                    formattedDate = data.flightDate.split('T')[0]; // Ambil hanya YYYY-MM-DD
-                } else {
-                    try {
-                        const d = new Date(data.flightDate);
-                        if (!isNaN(d.getTime())) {
-                            const yyyy = d.getFullYear();
-                            const mm = String(d.getMonth() + 1).padStart(2, '0');
-                            const dd = String(d.getDate()).padStart(2, '0');
-                            formattedDate = `${yyyy}-${mm}-${dd}`;
-                        } else {
-                            formattedDate = data.flightDate;
-                        }
-                    } catch(e) {
+                try {
+                    const d = new Date(data.flightDate);
+                    if (!isNaN(d.getTime())) {
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        formattedDate = `${yyyy}-${mm}-${dd}`;
+                    } else {
                         formattedDate = data.flightDate;
                     }
+                } catch(e) {
+                    formattedDate = data.flightDate;
                 }
             }
             const dateInput = document.getElementById('flightDate');
@@ -1867,14 +1878,9 @@
             let fileDateStr = ''; // String khusus untuk nama file
             
             if (data.flightDate) {
-                // Parsing manual agar tidak terjadi pergeseran tanggal karena Timezone
-                const dateParts = data.flightDate.includes('T') ? data.flightDate.split('T')[0].split('-') : data.flightDate.split('-');
-                if (dateParts.length === 3) {
-                    const year = parseInt(dateParts[0], 10);
-                    const month = parseInt(dateParts[1], 10) - 1; // Bulan di JS dimulai dari 0
-                    const day = parseInt(dateParts[2], 10);
-                    const fDate = new Date(year, month, day);
-                    
+                // Konversi string ke Date Object agar otomatis menyesuaikan zona waktu lokal
+                const fDate = new Date(data.flightDate);
+                if (!isNaN(fDate.getTime())) {
                     displayDate = fDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year:'numeric' });
                     // Format ke Indonesia (misal: 28 Mei 2026) secara dinamis
                     fileDateStr = fDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
