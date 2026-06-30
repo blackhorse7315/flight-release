@@ -1360,24 +1360,46 @@
             }, 300); // Sesuai dengan durasi transisi
         }
 
-        // --- 6. LOGIKA FETCH & RENDER DASHBOARD DATA ---
+        // --- 6. LOGIKA FETCH & RENDER DASHBOARD DATA (DIPERCEPAT DENGAN CACHE) ---
         async function loadReleases() {
             const container = document.getElementById('releaseHistoryContainer');
             const loader = document.getElementById('historyLoader');
             
             if(GOOGLE_SHEET_WEBAPP_URL === "PASTE_URL_GOOGLE_APP_SCRIPT_DISINI" || GOOGLE_SHEET_WEBAPP_URL === "") return;
 
-            container.innerHTML = '';
-            loader.classList.remove('hidden');
+            // 1. TAMPILKAN DATA DARI CACHE LOKAL SECARA INSTAN (JIKA ADA)
+            const cachedData = localStorage.getItem('ecrew_releases_cache');
+            if (cachedData) {
+                try {
+                    const parsedCache = JSON.parse(cachedData);
+                    globalReleases = parsedCache;
+                    renderHistory(parsedCache);
+                    updateDashboardStats(parsedCache);
+                } catch(e) { 
+                    console.error("Cache parse error", e); 
+                }
+            } else {
+                // Hanya tampilkan loading besar dan kosongkan layar jika belum ada cache sama sekali
+                container.innerHTML = '';
+                loader.classList.remove('hidden');
+            }
             
+            // 2. FETCH DATA TERBARU DARI SERVER DI LATAR BELAKANG
             try {
-                const response = await fetch(GOOGLE_SHEET_WEBAPP_URL);
+                // Tambahkan parameter waktu untuk mencegah browser menggunakan HTTP cache lama
+                const cacheBuster = `?t=${new Date().getTime()}`;
+                const response = await fetch(GOOGLE_SHEET_WEBAPP_URL + cacheBuster);
                 const result = await response.json();
                 
                 loader.classList.add('hidden');
                 
                 if(result.status === "success" && result.data) {
-                    globalReleases = result.data; // Simpan ke global variables
+                    globalReleases = result.data; // Update global variable
+                    
+                    // Simpan data terbaru ke Local Storage Cache
+                    localStorage.setItem('ecrew_releases_cache', JSON.stringify(result.data));
+                    
+                    // Render ulang dengan data yang benar-benar baru
                     renderHistory(result.data);
                     updateDashboardStats(result.data);
 
@@ -1401,16 +1423,23 @@
                         document.getElementById('adm_doc_num').value = globalDocNum;
                     }
                 } else {
-                    container.innerHTML = '<div class="text-center py-10 bg-white rounded-2xl border border-slate-200 text-slate-500">Belum ada data Flight Release.</div>';
+                    // Jika data kosong dan tidak ada cache
+                    if(!cachedData) {
+                        container.innerHTML = '<div class="text-center py-10 bg-white rounded-2xl border border-slate-200 text-slate-500">Belum ada data Flight Release.</div>';
+                    }
                 }
             } catch (error) {
                 loader.classList.add('hidden');
                 console.error('Error fetching data:', error);
-                container.innerHTML = `
-                    <div class="bg-red-50 text-red-500 p-5 rounded-2xl text-center text-sm border border-red-100 shadow-sm">
-                        <p class="font-bold text-base mb-1">Gagal Menarik Data</p>
-                        <p>Pastikan Google Apps Script Anda telah diperbarui dengan fungsi doGet() dan dideploy ulang (New Version).</p>
-                    </div>`;
+                
+                // Tampilkan pesan error HANYA jika pengguna tidak punya data cache untuk dilihat
+                if(!cachedData) {
+                    container.innerHTML = `
+                        <div class="bg-red-50 text-red-500 p-5 rounded-2xl text-center text-sm border border-red-100 shadow-sm">
+                            <p class="font-bold text-base mb-1">Gagal Menarik Data</p>
+                            <p>Pastikan koneksi internet stabil dan Google Apps Script telah disiapkan.</p>
+                        </div>`;
+                }
             }
         }
 
@@ -1896,6 +1925,9 @@
 
             // Ambil nomor dokumen PDF menggunakan variabel global Settings
             const pdfFormDocNumber = globalDocNum;
+            
+            // Ubah teks "Doc No" / "Doc. No" menjadi "Form No" khusus untuk tampilan PDF
+            const displayDocNum = pdfFormDocNumber.replace(/Doc\.?\s*No\.?/gi, 'Form No');
 
             // Simpan title asli halaman untuk dikembalikan nanti
             const originalDocumentTitle = document.title;
@@ -1984,8 +2016,8 @@
                             print-color-adjust: exact;
                         }
                         
-                        /* Posisi Header Rata Tengah */
-                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 6px; }
+                        /* Posisi Header Rata Tengah - Ditambahkan position: relative */
+                        .header { position: relative; text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 6px; }
                         .logo { height: 35px; margin: 0 auto 3px auto; display: block; object-fit: contain; }
                         .header-text { text-align: center; }
                         .header-title { font-size: 18px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
@@ -2025,8 +2057,8 @@
                         .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 2px auto; width: 85%; }
                         .sig-lic { font-size: 8px; color: #64748b; margin-top: 1px; }
                         
-                        /* Form Doc Number Styling */
-                        .doc-num { position: fixed; bottom: 0; right: 0; font-size: 7.5px; color: #64748b; font-weight: 800; text-transform: uppercase; }
+                        /* Form Doc Number Styling - Diubah menjadi absolute terhadap .header */
+                        .doc-num { position: absolute; bottom: 4px; right: 0; font-size: 7.5px; color: #475569; font-weight: 800; text-transform: uppercase; }
                     </style>
                 </head>
                 <body>
@@ -2037,6 +2069,8 @@
                             <h1 class="header-title">FLIGHT RELEASE</h1>
                             <h2 class="header-subtitle">PT. TRANSWISATA PRIMA AVIATION</h2>
                         </div>
+                        <!-- Form Document Number Ditempatkan di dalam header -->
+                        <div class="doc-num">${displayDocNum}</div>
                     </div>
 
                     <!-- 1. Flight Information -->
@@ -2111,8 +2145,8 @@
                         </div>
                     </div>
 
-                    <!-- Form Document Number Dikeluarkan dari footer wrapper agar menempel secara absolut di halaman cetak -->
-                    <div class="doc-num">${pdfFormDocNumber}</div>
+                    <script>
+                        // Set title document iframe secara eksplisit untuk nama file default Save as PDF
                 </body>
                 </html>
             `;
