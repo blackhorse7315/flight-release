@@ -1902,13 +1902,13 @@
             // Ubah title halaman utama agar dialog Print menangkap nama file ini
             document.title = documentTitle;
 
-            // Signature (Ukuran proporsional agak besar namun tetap pas di 1 lembar A4)
+            // Signature (Dikompres sedikit agar tidak tumpah ke halaman 2 di iPhone, tapi tetap jelas terbaca)
             let signatureHTML = data.releaseSign ? String(data.releaseSign) : '';
             if(signatureHTML.includes('<img')) {
-                // Diperbesar ukurannya secara signifikan
-                signatureHTML = signatureHTML.replace('<img', '<img style="max-height: 90px; max-width: 250px; object-fit: contain; margin: 0 auto;"');
+                // max-height 70px sangat optimal untuk kertas A4 1 halaman
+                signatureHTML = signatureHTML.replace('<img', '<img style="max-height: 70px; max-width: 220px; object-fit: contain; margin: 0 auto;"');
             } else {
-                signatureHTML = `<span style="font-family: monospace; font-style: italic; font-size: 14px;">${signatureHTML || '-'}</span>`;
+                signatureHTML = `<span style="font-family: monospace; font-style: italic; font-size: 13px;">${signatureHTML || '-'}</span>`;
             }
 
             // Helper rendering Sortie (Pasti 1 DEP, 4 INT, 1 DEST)
@@ -1962,71 +1962,71 @@
                 return html;
             }
 
-            // Desain CSS Khusus Print (Sangat Rapi & Modern)
+            // Desain CSS Khusus Print (Dikompres agar MUAT 1 HALAMAN DI IPHONE)
             const printHTML = `
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>${documentTitle}</title>
                     <style>
-                        /* Margin A4 disesuaikan agar semuanya Fit di 1 Page */
-                        @page { size: A4 portrait; margin: 8mm; }
+                        /* Margin A4 diperkecil ke 5mm agar tidak memicu page break di iOS */
+                        @page { size: A4 portrait; margin: 5mm; }
                         * { box-sizing: border-box; }
+                        html, body { width: 100%; height: 100%; }
                         body { 
                             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-                            font-size: 10px; 
+                            font-size: 9.5px; 
                             color: #1e293b; 
-                            line-height: 1.2; 
+                            line-height: 1.15; 
                             margin: 0; 
                             padding: 0; 
                             -webkit-print-color-adjust: exact; 
                             print-color-adjust: exact;
                         }
                         
-                        /* Posisi Header Rata Tengah (Center Aligned) */
-                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 8px; }
-                        .logo { height: 40px; margin: 0 auto 4px auto; display: block; object-fit: contain; }
+                        /* Posisi Header Rata Tengah */
+                        .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 6px; }
+                        .logo { height: 35px; margin: 0 auto 3px auto; display: block; object-fit: contain; }
                         .header-text { text-align: center; }
-                        .header-title { font-size: 20px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
-                        .header-subtitle { font-size: 11px; font-weight: 700; margin: 2px 0 0 0; color: #475569; }
+                        .header-title { font-size: 18px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
+                        .header-subtitle { font-size: 10px; font-weight: 700; margin: 1px 0 0 0; color: #475569; }
                         
-                        .section { margin-bottom: 8px; }
-                        .section-title { font-weight: 800; font-size: 11px; background-color: #f1f5f9; padding: 4px 6px; border-left: 4px solid #d97706; margin-bottom: 4px; color: #0f172a; text-transform: uppercase; }
+                        .section { margin-bottom: 6px; }
+                        .section-title { font-weight: 800; font-size: 10px; background-color: #f1f5f9; padding: 3px 5px; border-left: 4px solid #d97706; margin-bottom: 3px; color: #0f172a; text-transform: uppercase; }
                         
                         .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
                         .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
                         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
                         
-                        .box { border: 1px solid #cbd5e1; padding: 4px 6px; border-radius: 4px; background: #fff; }
-                        .box-label { font-size: 8px; color: #64748b; text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
-                        .box-val { font-weight: 700; font-size: 11px; color: #0f172a; }
+                        .box { border: 1px solid #cbd5e1; padding: 3px 5px; border-radius: 4px; background: #fff; }
+                        .box-label { font-size: 7.5px; color: #64748b; text-transform: uppercase; margin-bottom: 1px; font-weight: 600; }
+                        .box-val { font-weight: 700; font-size: 10px; color: #0f172a; }
                         
-                        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-                        th, td { border: 1px solid #cbd5e1; padding: 4px 4px; text-align: center; font-size: 9px; }
-                        th { background-color: #f8fafc; font-weight: 700; color: #475569; font-size: 8px; text-transform: uppercase; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+                        th, td { border: 1px solid #cbd5e1; padding: 3px 4px; text-align: center; font-size: 8.5px; }
+                        th { background-color: #f8fafc; font-weight: 700; color: #475569; font-size: 7.5px; text-transform: uppercase; }
                         
-                        .badge { display: inline-block; padding: 2px 4px; border-radius: 3px; font-weight: 700; font-size: 8px; }
+                        .badge { display: inline-block; padding: 1px 4px; border-radius: 3px; font-weight: 700; font-size: 7.5px; }
                         .badge-yes { background-color: #d1fae5; color: #047857; border: 1px solid #6ee7b7; }
                         .badge-nil { background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
                         
-                        .checklist-container { border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; display: flex; justify-content: space-between; }
+                        .checklist-container { border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; display: flex; justify-content: space-between; }
                         .check-item { text-align: center; }
                         
-                        .other-brief { border: 1px solid #cbd5e1; padding: 6px; border-radius: 4px; min-height: 25px; font-size: 9px; white-space: pre-wrap; }
+                        .other-brief { border: 1px solid #cbd5e1; padding: 4px 6px; border-radius: 4px; min-height: 20px; font-size: 8.5px; white-space: pre-wrap; }
                         
-                        .footer { margin-top: 10px; display: flex; justify-content: flex-end; page-break-inside: avoid; }
-                        .sig-box { width: 260px; text-align: center; }
-                        .sig-title { font-weight: 800; font-size: 10px; margin-bottom: 2px; color: #0f172a; }
-                        /* Tinggi ditambah agar gambar lebih besar tidak terpotong */
-                        .sig-area { height: 95px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+                        .footer { margin-top: 6px; display: flex; justify-content: flex-end; page-break-inside: avoid; position: relative; padding-bottom: 15px; }
+                        .sig-box { width: 250px; text-align: center; }
+                        .sig-title { font-weight: 800; font-size: 9px; margin-bottom: 2px; color: #0f172a; }
+                        /* Tinggi area tanda tangan dikompres agar tidak tembus margin kertas iPhone */
+                        .sig-area { height: 75px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
                         
-                        /* Posisi margin disesuaikan karena garis ada di bawah nama */
-                        .sig-name { font-weight: 800; font-size: 12px; text-transform: uppercase; color: #0f172a; margin-bottom: 2px;}
-                        .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 3px auto; width: 85%; }
-                        .sig-lic { font-size: 9px; color: #64748b; margin-top: 2px; }
+                        .sig-name { font-weight: 800; font-size: 11px; text-transform: uppercase; color: #0f172a; margin-bottom: 1px;}
+                        .sig-line { border-bottom: 1px solid #0f172a; margin: 0 auto 2px auto; width: 85%; }
+                        .sig-lic { font-size: 8px; color: #64748b; margin-top: 1px; }
                         
-                        /* Form Doc Number Styling - Diubah menjadi fixed position agar menempel di ujung bawah kertas */
-                        .doc-num { position: fixed; bottom: 0; right: 0; font-size: 8px; color: #64748b; font-weight: 800; text-transform: uppercase; }
+                        /* Form Doc Number Styling */
+                        .doc-num { position: fixed; bottom: 0; right: 0; font-size: 7.5px; color: #64748b; font-weight: 800; text-transform: uppercase; }
                     </style>
                 </head>
                 <body>
