@@ -1101,7 +1101,10 @@
             
             const routeHtml = `
                 <div class="bg-white border border-slate-200 rounded-xl p-3 relative fade-in shadow-sm" id="s${num}_route${idx}">
-                    <h5 class="text-[10px] font-bold text-brand-dark uppercase mb-2 border-b border-slate-100 pb-1">${title}</h5>
+                    <div class="flex justify-between items-center mb-2 border-b border-slate-100 pb-1">
+                        <h5 class="route-title text-[10px] font-bold text-brand-dark uppercase">${title}</h5>
+                        ${!isDeparture ? `<button type="button" onclick="removeSpecificRoute(${num}, 's${num}_route${idx}')" class="btn-remove-route text-[9px] uppercase font-bold text-red-500 hover:text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-100 transition">Clear</button>` : ''}
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div class="md:col-span-2">
                             <label class="block text-[9px] font-semibold text-slate-500 uppercase mb-1">${title} Location</label>
@@ -1177,6 +1180,41 @@
             }
             
             sorties[num].count++;
+            updateSortieBtns(num);
+        }
+
+        // FUNGSI BARU UNTUK MENGHAPUS SATUAN INTERMEDIATE
+        function removeSpecificRoute(num, routeId) {
+            const el = document.getElementById(routeId);
+            if (el) el.remove();
+            
+            // Re-index remaining routes agar susunan penyimpanan dan PDF tidak rusak
+            const container = document.getElementById(`sortie${num}-routes`);
+            const routes = container.querySelectorAll(`div[id^="s${num}_route"]`);
+            
+            routes.forEach((routeEl, idx) => {
+                routeEl.id = `s${num}_route${idx}`;
+                
+                const titleEl = routeEl.querySelector('.route-title');
+                if (titleEl) titleEl.innerText = idx === 0 ? 'Departure' : 'Intermediate';
+                
+                // Update atribut name di input form secara dinamis
+                const loc = routeEl.querySelector(`input[name$="_loc"]`); if(loc) loc.name = `s${num}_r${idx}_loc`;
+                const alt = routeEl.querySelector(`input[name$="_alt"]`); if(alt) alt.name = `s${num}_r${idx}_alt`;
+                const toalt = routeEl.querySelector(`input[name$="_toalt"]`); if(toalt) toalt.name = `s${num}_r${idx}_toalt`;
+                const minfuel = routeEl.querySelector(`input[name$="_minfuel"]`); if(minfuel) minfuel.name = `s${num}_r${idx}_minfuel`;
+                const minfuel_unit = routeEl.querySelector(`select[name$="_minfuel_unit"]`); if(minfuel_unit) minfuel_unit.name = `s${num}_r${idx}_minfuel_unit`;
+                const fob = routeEl.querySelector(`input[name$="_fob"]`); if(fob) fob.name = `s${num}_r${idx}_fob`;
+                const fob_unit = routeEl.querySelector(`select[name$="_fob_unit"]`); if(fob_unit) fob_unit.name = `s${num}_r${idx}_fob_unit`;
+
+                // Update parameter event onclick pada tombol Clear nya
+                const btnRemove = routeEl.querySelector('.btn-remove-route');
+                if (btnRemove) {
+                    btnRemove.setAttribute('onclick', `removeSpecificRoute(${num}, 's${num}_route${idx}')`);
+                }
+            });
+            
+            sorties[num].count = routes.length;
             updateSortieBtns(num);
         }
 
