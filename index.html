@@ -2084,7 +2084,30 @@
                         /* Margin A4 diperkecil ke 5mm agar tidak memicu page break di iOS */
                         @page { size: A4 portrait; margin: 5mm; }
                         * { box-sizing: border-box; }
-                        html, body { width: 100%; height: 100%; }
+                        html, body { width: 100%; min-height: 100%; }
+                        /* Preview iOS: lembar kertas tampil penuh dan dapat dicetak */
+                        .print-actions { display: none; }
+                        @media screen {
+                            html { background: #e2e8f0; }
+                            body { width: 210mm; min-height: 297mm; margin: 16px auto; padding: 5mm;
+                                   background: white; box-shadow: 0 10px 35px rgba(15,23,42,.12); }
+                            .print-actions { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 999;
+                                align-items: center; justify-content: center; gap: 10px; padding: 12px;
+                                background: rgba(15,23,42,.96); padding-bottom: max(12px,env(safe-area-inset-bottom)); }
+                            .print-actions button { font: 600 14px -apple-system,Arial,sans-serif; padding: 12px 20px;
+                                border-radius: 9px; border: 0; cursor: pointer; background: #d97706; color: #fff; }
+                            .print-actions button.secondary { background: #475569; }
+                            @media(max-width: 850px) {
+                                body { margin: 0; box-shadow: none; }
+                                .print-actions { justify-content: stretch; }
+                                .print-actions button { flex: 1; }
+                            }
+                        }
+                        @media print {
+                            html, body { margin: 0 !important; padding: 0 !important; width: 100% !important;
+                                min-height: 0 !important; box-shadow: none !important; }
+                            .print-actions { display: none !important; }
+                        }
                         body { 
                             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
                             font-size: 9.5px; 
@@ -2142,6 +2165,10 @@
                     </style>
                 </head>
                 <body>
+                    <div class="print-actions">
+                        <button type="button" onclick="window.print()">Print / Save PDF</button>
+                        <button type="button" class="secondary" onclick="window.close(); if(!window.closed) history.back();">Back</button>
+                    </div>
                     <!-- Header (Centered) -->
                     <div class="header">
                         <img src="https://lh3.googleusercontent.com/d/1WNcGjsZ9_Fp54xzOl01EYRqM6-wY5Zh7" class="logo" alt="Logo" crossorigin="anonymous" />
@@ -2226,41 +2253,55 @@
                         </div>
                     </div>
 
-                    <script>
-                        // Set title document iframe secara eksplisit untuk nama file default Save as PDF
                 </body>
                 </html>
             `;
 
-            // Membuat Iframe tersembunyi untuk proses printing native browser
+            // iPhone / iPad: hindari print() dari iframe tersembunyi.
+            // Buka preview synchronously saat tap supaya tidak dianggap popup otomatis.
+            const isAppleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+            if (isAppleMobile) {
+                const preview = window.open('', '_blank');
+                if (preview) {
+                    preview.document.open();
+                    preview.document.write(printHTML);
+                    preview.document.close();
+                    // Tidak auto-print: pada iOS window.print harus dipanggil lewat
+                    // interaksi pengguna di halaman preview (tombol Print / Save PDF).
+                    document.title = originalDocumentTitle;
+                    return;
+                }
+                // Popup diblokir (mis. aplikasi ditanam dalam WebView):
+                // navigasi ke HTML preview dalam tab yang sama sebagai fallback.
+                const previewBlob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
+                const previewUrl = URL.createObjectURL(previewBlob);
+                window.location.assign(previewUrl);
+                return;
+            }
+
+            // Desktop / Android: gunakan native print iframe seperti sebelumnya.
             let iframe = document.getElementById('printFrame');
             if (!iframe) {
                 iframe = document.createElement('iframe');
                 iframe.id = 'printFrame';
-                iframe.style.position = 'fixed';
-                iframe.style.right = '0';
-                iframe.style.bottom = '0';
-                iframe.style.width = '0';
-                iframe.style.height = '0';
-                iframe.style.border = 'none';
+                iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;border:0;pointer-events:none';
                 document.body.appendChild(iframe);
             }
-            
-            const doc = iframe.contentWindow.document;
-            doc.open();
-            doc.write(printHTML);
-            doc.close();
-
-            // Tunggu aset dirender, trigger print, lalu kembalikan title asli
-            setTimeout(() => {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-                
-                // Kembalikan title web seperti semula setelah print dialog muncul
-                setTimeout(() => {
+            const printDoc = iframe.contentWindow.document;
+            printDoc.open();
+            printDoc.write(printHTML);
+            printDoc.close();
+            const images = Array.from(printDoc.images);
+            const ready = Promise.all(images.map(img => img.complete ? Promise.resolve() :
+                new Promise(resolve => { img.onload = resolve; img.onerror = resolve; })));
+            Promise.race([ready, new Promise(resolve => setTimeout(resolve, 2500))])
+                .then(() => {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
                     document.title = originalDocumentTitle;
-                }, 1000);
-            }, 800);
+                });
         }
     </script>
 </body>
