@@ -2083,6 +2083,14 @@
                     <style>
                         /* Margin A4 diperkecil ke 5mm agar tidak memicu page break di iOS */
                         @page { size: A4 portrait; margin: 5mm; }
+                        /* Area kerja 200 x 287 mm: paksa konten berada di satu halaman. */
+                        #a4-print-sheet { width: 100%; position: relative; }
+                        #a4-print-content { width: 100%; transform-origin: top left; }
+                        @media print {
+                            #a4-print-sheet { height: 285mm !important; overflow: hidden !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+                            #a4-print-content { position: absolute; top: 0; left: 0; }
+                            html, body { height: auto !important; overflow: hidden !important; }
+                        }
                         * { box-sizing: border-box; }
                         html, body { width: 100%; min-height: 100%; }
                         /* Preview iOS: lembar kertas tampil penuh dan dapat dicetak */
@@ -2166,9 +2174,10 @@
                 </head>
                 <body>
                     <div class="print-actions">
-                        <button type="button" onclick="window.print()">Print / Save PDF</button>
+                        <button type="button" onclick="printSingleA4()">Print / Save PDF</button>
                         <button type="button" class="secondary" onclick="window.close(); if(!window.closed) history.back();">Back</button>
                     </div>
+                    <div id="a4-print-sheet"><div id="a4-print-content">
                     <!-- Header (Centered) -->
                     <div class="header">
                         <img src="https://lh3.googleusercontent.com/d/1WNcGjsZ9_Fp54xzOl01EYRqM6-wY5Zh7" class="logo" alt="Logo" crossorigin="anonymous" />
@@ -2252,7 +2261,34 @@
                             <div class="sig-lic">LIC: ${data.releaseLicenceNo || '....................'}</div>
                         </div>
                     </div>
-
+                    </div></div>
+                    <script>
+                      // Ukur tinggi dokumen asli dalam satuan CSS pixel, lalu skala
+                      // secara proporsional supaya tidak terbelah menjadi halaman kedua.
+                      function fitSingleA4() {
+                        var sheet = document.getElementById('a4-print-sheet');
+                        var content = document.getElementById('a4-print-content');
+                        if (!sheet || !content) return;
+                        content.style.transform = 'none';
+                        var gauge = document.createElement('div');
+                        gauge.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;height:285mm;width:1px;';
+                        document.body.appendChild(gauge);
+                        var maxHeight = gauge.getBoundingClientRect().height;
+                        gauge.remove();
+                        var contentHeight = content.scrollHeight;
+                        var factor = Math.min(1, (maxHeight - 3) / Math.max(1, contentHeight));
+                        content.style.transform = 'scale(' + factor.toFixed(5) + ')';
+                        sheet.style.height = (maxHeight) + 'px';
+                      }
+                      function printSingleA4() { fitSingleA4(); window.print(); }
+                      window.addEventListener('beforeprint', fitSingleA4);
+                      window.addEventListener('load', fitSingleA4);
+                      document.fonts && document.fonts.ready.then(fitSingleA4);
+                      Array.prototype.forEach.call(document.images, function (im) {
+                        if (!im.complete) { im.addEventListener('load', fitSingleA4); im.addEventListener('error', fitSingleA4); }
+                      });
+                      fitSingleA4();
+                    <\/script>
                 </body>
                 </html>
             `;
